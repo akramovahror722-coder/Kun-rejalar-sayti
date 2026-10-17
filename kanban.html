@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="uz" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProKanban Enterprise - Ultimate Task Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="kanban-body">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Header Navigation -->
+    <header class="kanban-header">
+        <div class="header-brand">
+            <div class="brand-icon"><i class="fa-solid fa-columns"></i></div>
+            <div>
+                <h1>ProKanban <span class="highlight">Enterprise</span></h1>
+                <p>Advanced Workflow & Analytics Automation</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <!-- Ko'rinishni o'zgartirish tugmalari -->
+            <button class="btn-secondary active-view" onclick="switchView('kanban')" id="kanbanViewBtn" title="Kanban ko'rinishi"><i class="fa-solid fa-columns"></i> Taxta</button>
+            <button class="btn-secondary" onclick="switchView('calendar')" id="calendarViewBtn" title="Kalendar ko'rinishi"><i class="fa-solid fa-calendar-days"></i> Kalendar</button>
+
+            <!-- Rangli mavzu tanlash -->
+            <select id="themeStyleSelect" class="sort-dropdown" onchange="changeThemeStyle()" title="Rangli mavzu">
+                <option value="default">Mavzu: Standart</option>
+                <option value="emerald">Mavzu: Zumrad</option>
+                <option value="cyberpunk">Mavzu: Cyberpunk</option>
+            </select>
+
+            <button class="btn-theme-toggle" onclick="toggleTheme()" title="Rejimni o'zgartirish (Theme)">
+                <i class="fa-solid fa-moon" id="themeIcon"></i>
+            </button>
+            <button class="btn-secondary" onclick="requestNotificationPermission()" title="Bildirishnomalarni yoqish"><i
+                    class="fa-solid fa-bell"></i> Eslatmalar</button>
+            <button class="btn-secondary" onclick="exportData()" title="JSON zaxira"><i
+                    class="fa-solid fa-download"></i> Eksport</button>
+            <button class="btn-secondary" onclick="exportToCSV()" title="Excel uchun CSV"><i
+                    class="fa-solid fa-file-excel"></i> Excel</button>
+            <label class="btn-secondary upload-label" title="Import qilish">
+                <i class="fa-solid fa-upload"></i> Import <input type="file" id="importFile" accept=".json"
+                    onchange="importData(event)" hidden>
+            </label>
+            <button class="btn-primary" onclick="openTaskModal()">
+                <i class="fa-solid fa-plus"></i> Yangi Vazifa
+            </button>
+        </div>
+    </header>
+
+    <!-- Analytics Dashboard Bar -->
+    <section class="dashboard-bar">
+        <div class="stat-card">
+            <div class="stat-icon bg-blue"><i class="fa-solid fa-list-check"></i></div>
+            <div>
+                <span class="stat-num" id="statTotal">0</span>
+                <span class="stat-label">Jami Vazifalar</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-emerald"><i class="fa-solid fa-circle-check"></i></div>
+            <div>
+                <span class="stat-num" id="statCompleted">0</span>
+                <span class="stat-label">Bajarilgan</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon bg-rose"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div>
+                <span class="stat-num" id="statUrgent">0</span>
+                <span class="stat-label">Muhim / Qizil</span>
+            </div>
+        </div>
+        <div class="stat-card progress-card-stat">
+            <div class="stat-flex">
+                <span class="stat-label">Bajarilish darajasi</span>
+                <span class="stat-num" id="statPercent">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="statProgressBar"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Filter & Search Control Panel -->
+    <section class="filter-panel">
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" placeholder="Vazifa nomi bo'yicha qidirish..." oninput="filterTasks()">
+            <button class="voice-search-btn" onclick="startVoiceSearch()" title="Ovozli qidirish"><i class="fa-solid fa-microphone" id="micIcon"></i></button>
+        </div>
+        <div class="filter-controls-right">
+            <select id="sortSelect" class="sort-dropdown" onchange="changeSort()">
+                <option value="default">Tartiblash: Odatiy</option>
+                <option value="priority">Muhimligi bo'yicha</option>
+                <option value="dueDate">Muddati bo'yicha</option>
+            </select>
+            <div class="filter-buttons">
+                <button class="filter-btn active" onclick="setFilter('all', this)">Barchasi</button>
+                <button class="filter-btn" onclick="setFilter('high', this)">Muhim</button>
+                <button class="filter-btn" onclick="setFilter('bug', this)">Bug</button>
+                <button class="filter-btn" onclick="setFilter('feature', this)">Feature</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Presentation command center -->
+    <section class="command-center" aria-label="Loyiha boshqaruv paneli">
+        <div class="command-copy">
+            <span class="eyebrow"><i class="fa-solid fa-sparkles"></i> Bugungi ish ritmi</span>
+            <h2 id="projectHeadline">Loyiha nazorat ostida</h2>
+            <p id="projectSummary">Jamoangizning muhim vazifalarini bir joydan boshqaring.</p>
+        </div>
+        <div class="command-actions">
+            <button class="command-chip" onclick="openCommandPalette()"><i class="fa-solid fa-command"></i><span>Tezkor komanda</span><kbd>Ctrl K</kbd></button>
+            <button class="command-chip" onclick="toggleFocusMode()"><i class="fa-solid fa-expand"></i><span id="focusModeLabel">Focus mode</span></button>
+            <button class="command-chip" onclick="openInsights()"><i class="fa-solid fa-chart-line"></i><span>Insightlar</span></button>
+        </div>
+    </section>
+
+    <section class="pulse-grid" aria-label="Loyiha insightlari">
+        <div class="pulse-panel pulse-main">
+            <div class="panel-heading">
+                <div><span class="eyebrow">LIVE OVERVIEW</span><h3>Jamoa energiyasi</h3></div>
+                <span class="live-indicator"><i></i> LIVE</span>
+            </div>
+            <div class="pulse-content">
+                <div class="pulse-ring" id="pulseRing"><strong id="pulseScore">0</strong><span>score</span></div>
+                <div class="pulse-copy"><strong id="pulseTitle">Barqaror start</strong><p id="pulseDescription">Vazifalarni bajarganingiz sari loyiha ko'rsatkichi yangilanadi.</p><div class="mini-bars" id="miniBars"></div></div>
+            </div>
+        </div>
+        <div class="pulse-panel deadline-panel">
+            <div class="panel-heading"><div><span class="eyebrow">NEXT UP</span><h3>Yaqin muddatlar</h3></div><i class="fa-regular fa-clock panel-icon"></i></div>
+            <div id="upcomingDeadlines" class="deadline-list"></div>
+        </div>
+        <div class="pulse-panel team-panel">
+            <div class="panel-heading"><div><span class="eyebrow">TEAM FLOW</span><h3>Jamoa yuklamasi</h3></div><button class="icon-ghost" onclick="showTeamSummary()" title="Jamoa xulosasi"><i class="fa-solid fa-arrow-up-right-from-square"></i></button></div>
+            <div id="teamWorkload" class="team-workload"></div>
+        </div>
+    </section>
+
+    <!-- Main Workspace Board -->
+    <main class="kanban-main">
+        <div class="kanban-column-card">
+            <div class="column-header">
+                <div class="col-title-wrap"><span class="dot todo-dot"></span>
+                    <h2>Rejadagilar</h2>
+                </div>
+                <span id="count-todo" class="badge-count">0</span>
+            </div>
+            <div id="todo" class="kanban-drop-zone" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)"
+                ondragenter="addDropStyle(event)" ondrop="drop(event, 'todo')"></div>
+        </div>
+        <div class="kanban-column-card">
+            <div class="column-header">
+                <div class="col-title-wrap"><span class="dot progress-dot"></span>
+                    <h2>Jarayonda</h2>
+                </div>
+                <span id="count-progress" class="badge-count">0</span>
+            </div>
+            <div id="progress" class="kanban-drop-zone" ondragover="allowDrop(event)"
+                ondragleave="removeDropStyle(event)" ondragenter="addDropStyle(event)" ondrop="drop(event, 'progress')">
+            </div>
+        </div>
+        <div class="kanban-column-card">
+            <div class="column-header">
+                <div class="col-title-wrap"><span class="dot review-dot"></span>
+                    <h2>Tekshiruvda</h2>
+                </div>
+                <span id="count-review" class="badge-count">0</span>
+            </div>
+            <div id="review" class="kanban-drop-zone" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)"
+                ondragenter="addDropStyle(event)" ondrop="drop(event, 'review')"></div>
+        </div>
+        <div class="kanban-column-card">
+            <div class="column-header">
+                <div class="col-title-wrap"><span class="dot done-dot"></span>
+                    <h2>Bajarilgan</h2>
+                </div>
+                <span id="count-done" class="badge-count">0</span>
+            </div>
+            <div id="done" class="kanban-drop-zone" ondragover="allowDrop(event)" ondragleave="removeDropStyle(event)"
+                ondragenter="addDropStyle(event)" ondrop="drop(event, 'done')"></div>
+        </div>
+    </main>
+
+    <!-- Calendar View Container (Dastlab yashirin) -->
+    <section id="calendarViewContainer" class="calendar-view-box" style="display: none; max-width: 1600px; margin: 20px auto; padding: 0 30px; width: 100%;">
+    </section>
+
+    <!-- Task Creation / Editing Modal -->
+    <div id="taskModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="modalHeaderTitle">Yangi Vazifa Qo'shish</h3>
+                <button class="close-btn" onclick="closeTaskModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="taskForm" onsubmit="handleTaskSubmit(event)">
+                <input type="hidden" id="editingTaskId">
+                <div class="form-group">
+                    <label>Vazifa Nomi</label>
+                    <input type="text" id="taskTitleInput" required placeholder="Masalan: API integratsiyasi">
+                </div>
+                <div class="form-group">
+                    <label>Tavsif</label>
+                    <textarea id="taskDescInput" rows="2" placeholder="Batafsil ma'lumot..."></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Daraja</label>
+                        <select id="taskPriorityInput">
+                            <option value="low">Past</option>
+                            <option value="medium" selected>O'rta</option>
+                            <option value="high">Yuqori / Muhim</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Kategoriya / Teg</label>
+                        <select id="taskTagInput">
+                            <option value="feature">Yangi xususiyat (Feature)</option>
+                            <option value="bug">Xatolik (Bug)</option>
+                            <option value="refactor">Kod tozalash (Refactor)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Mas'ul shaxs</label>
+                        <input type="text" id="taskAssigneeInput" placeholder="Masalan: Aziz" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tugash Sanasi</label>
+                        <input type="date" id="taskDueDateInput">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeTaskModal()">Bekor qilish</button>
+                    <button type="submit" class="btn-primary" id="taskSubmitBtn">Saqlash</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Details Modal -->
+    <div id="detailsModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3 id="detailTitle">Vazifa Tafsilotlari</h3>
+                <button class="close-btn" onclick="closeDetailsModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body-scroll">
+                <p id="detailDesc" class="detail-desc-text"></p>
+
+                <!-- Time Tracker Section -->
+                <div class="detail-section">
+                    <h4>Vaqtni o'lchash (Pomodoro / Timer)</h4>
+                    <div class="timer-flex">
+                        <span id="timerDisplay" class="timer-clock">00:00:00</span>
+                        <div class="timer-btns">
+                            <button id="startTimerBtn" onclick="toggleTimer()" class="btn-sm-primary"><i
+                                    class="fa-solid fa-play"></i> Boshlash</button>
+                            <button onclick="resetTimer()" class="btn-secondary" style="padding: 6px 10px;"><i
+                                    class="fa-solid fa-rotate-left"></i></button>
+                        </div>
+                    </div>
+                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Jami sarflangan vaqt: <strong
+                            id="totalTimeSpent">0 min</strong></p>
+                </div>
+
+                <!-- Attachments Section -->
+                <div class="detail-section">
+                    <h4>Fayllar va Rasmlar</h4>
+                    <div id="attachmentsContainer" class="attachments-box"></div>
+                    <label class="btn-sm-primary upload-file-btn">
+                        <i class="fa-solid fa-paperclip"></i> Fayl biriktirish <input type="file" id="attachmentInput"
+                            onchange="uploadAttachment(event)" hidden>
+                    </label>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Chek-list (Sub-vazifalar)</h4>
+                    <div id="checklistContainer" class="checklist-items"></div>
+                    <div class="add-subtask-row">
+                        <input type="text" id="newSubtaskInput" placeholder="Yangi qadam qo'shish...">
+                        <button onclick="addSubtask()" class="btn-sm-primary">Qo'shish</button>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Izohlar</h4>
+                    <div id="commentsContainer" class="comments-box"></div>
+                    <div class="add-subtask-row">
+                        <input type="text" id="newCommentInput" placeholder="Izoh yozish...">
+                        <button onclick="addComment()" class="btn-sm-primary">Yuborish</button>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h4>Aktivlik tarixi (Activity Log)</h4>
+                    <div id="activityLogContainer" class="activity-log-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-container confirm-modal-box">
+            <div class="modal-header">
+                <h3>O'chirishni tasdiqlang</h3>
+                <button class="close-btn" onclick="closeConfirmModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">Haqiqatan ham ushbu vazifani
+                o'chirib yubormoqchimisiz?</p>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeConfirmModal()">Bekor qilish</button>
+                <button type="button" class="btn-danger" id="confirmDeleteBtn">O'chirish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Command palette -->
+    <div id="commandPalette" class="modal-overlay palette-overlay" onclick="closeCommandPalette(event)">
+        <div class="command-palette" onclick="event.stopPropagation()">
+            <div class="palette-search"><i class="fa-solid fa-command"></i><input id="paletteInput" type="search" placeholder="Komanda yoki amal qidiring..." oninput="filterCommands()"><button type="button" class="palette-close-key" onclick="closeCommandPalette()" aria-label="Command palette oynasini yopish">ESC</button></div>
+            <div id="commandList" class="command-list"></div>
+            <div class="palette-footer"><span><kbd>↑↓</kbd> tanlash</span><span><kbd>Enter</kbd> bajarish</span><span><kbd>Esc</kbd> yopish</span></div>
+        </div>
+    </div>
+
+    <!-- Insight drawer -->
+    <aside id="insightsDrawer" class="insights-drawer" aria-label="Loyiha insightlari">
+        <div class="drawer-header"><div><span class="eyebrow">PERFORMANCE LAB</span><h2>Project insights</h2></div><button class="close-btn" onclick="closeInsights()"><i class="fa-solid fa-xmark"></i></button></div>
+        <div id="insightsBody" class="insights-body"></div>
+    </aside>
+
+    <script src="script.js"></script>
+    <!-- AI Assistant Floating Widget -->
+<div class="ai-assistant-wrapper">
+    <!-- Chat Toggle Button -->
+    <button class="ai-float-btn" onclick="toggleAIChat()" title="AI Yordamchi bilan suhbatlashish">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+    </button>
+
+    <!-- Chat Window -->
+    <div id="aiChatWindow" class="ai-chat-window" style="display: none;">
+        <div class="ai-chat-header">
+            <div class="ai-title-wrap">
+                <i class="fa-solid fa-robot"></i>
+                <span>ProKanban AI Assistant</span>
+            </div>
+            <button class="close-btn" onclick="toggleAIChat()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="aiChatMessages" class="ai-chat-messages">
+            <div class="ai-msg bot">
+                Salom! Men sizning ProKanban bo'yicha sun'iy intellekt yordamchingizman. Vazifalaringiz haqida noroziliklar bormi yoki yangi g'oyalar kerakmi? Menga yozing!
+            </div>
+        </div>
+        <div id="aiSuggestedQuestions" class="ai-suggested-questions"></div>
+        <div class="ai-chat-input-area">
+            <input type="text" id="aiUserInput" placeholder="Savol bering..." onkeypress="handleAIPress(event)">
+            <button onclick="sendAIMessage()" class="btn-sm-primary"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+</div>
+
+</body>
+
+</html>
